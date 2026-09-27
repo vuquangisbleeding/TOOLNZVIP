@@ -24,7 +24,6 @@ async function runAccount(baseApplicant, account, index, args, extensionPath) {
     if (extensionPath) {
       console.log(`[account ${index + 1}: ${account.username}] CAPSOLVER_SYNC_START`);
       try {
-        await new Promise(resolve => setTimeout(resolve, index * config.capsolverSyncStaggerMs));
         await syncCapSolverApiKey(browser, path.resolve(config.root, extensionPath));
         console.log(`[account ${index + 1}: ${account.username}] CAPSOLVER_SYNC_DONE`);
       } catch (error) {
@@ -33,7 +32,8 @@ async function runAccount(baseApplicant, account, index, args, extensionPath) {
       }
     }
     const result = await runApplicant(browser, baseApplicant, account, index);
-    result.runtimeMs = Date.now() - accountStartedAt;
+    if (!result.runtimeMs) result.runtimeMs = Date.now() - accountStartedAt;
+    console.log(`[account ${index + 1}: ${account.username}] ACCOUNT_FINISHED status=${result.status} runtime_ms=${result.runtimeMs}`);
     await sendTelegramMessage(buildTelegramSummary([result], result.runtimeMs)).catch(error => console.error(`[TELEGRAM] ${result.label} lỗi gửi: ${error.message}`));
     return result;
   } catch (error) {

@@ -14,6 +14,13 @@ const capsolverApiKey = document.querySelector('#capsolverApiKey');
 const telegramStatus = document.querySelector('#telegramStatus');
 const runTime = document.querySelector('#runTime');
 const accountRows = document.querySelector('#accountRows');
+const nameFilter = document.querySelector('#nameFilter');
+const logFiles = document.querySelector('#logFiles');
+const logFilter = document.querySelector('#logFilter');
+const historicalLog = document.querySelector('#historicalLog');
+const selectedLogName = document.querySelector('#selectedLogName');
+const selectedLogSize = document.querySelector('#selectedLogSize');
+const historicalResults = document.querySelector('#historicalResults');
 const accountRuns = new Map();
 let runStartedAt = null;
 let logRemainder = '';
@@ -27,22 +34,142 @@ function formatDuration(milliseconds) {
     .map(value => String(value).padStart(2, '0')).join(':');
 }
 
+function formatTimestamp(timestamp) {
+  return timestamp ? new Date(timestamp).toLocaleString('vi-VN') : '-';
+}
+
+function formatFileSize(bytes) {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+let archivedLogs = [];
+
+function renderArchivedLogs() {
+  const wanted = logFilter.value.trim().toLowerCase();
+  logFiles.replaceChildren();
+  archivedLogs.filter(file => file.name.toLowerCase().includes(wanted)).forEach(file => {
+    const button = document.createElement('button');
+    button.className = 'log-file';
+    button.type = 'button';
+    const title = document.createElement('strong');
+    title.textContent = file.name;
+    const meta = document.createElement('span');
+    meta.textContent = `${formatTimestamp(file.modifiedAt)} · ${formatFileSize(file.size)}`;
+    button.append(title, meta);
+    button.addEventListener('click', () => loadArchivedLog(file, button));
+    logFiles.appendChild(button);
+  });
+  if (!logFiles.children.length) {
+    const empty = document.createElement('p');
+    empty.className = 'empty-state';
+    empty.textContent = 'Không tìm thấy log.';
+    logFiles.appendChild(empty);
+  }
+}
+
+async function loadArchivedLog(file, button) {
+  try {
+    const content = await window.runnerApi.readLog(file.name);
+    document.querySelectorAll('.log-file.selected').forEach(item => item.classList.remove('selected'));
+    button.classList.add('selected');
+    selectedLogName.textContent = file.name;
+    selectedLogSize.textContent = `${formatFileSize(file.size)} · ${formatTimestamp(file.modifiedAt)}`;
+    historicalLog.textContent = content;
+    historicalLog.scrollTop = 0;
+  } catch (error) {
+    selectedLogName.textContent = 'Không thể đọc log';
+    historicalLog.textContent = error.message;
+  }
+}
+
+async function loadArchivedLogs() {
+  try {
+    archivedLogs = await window.runnerApi.listLogs();
+    renderArchivedLogs();
+    await loadHistoricalResults();
+  } catch (error) {
+    logFiles.textContent = error.message;
+  }
+}
+
+async function loadHistoricalResults() {
+  try {
+    const results = await window.runnerApi.listLogResults();
+    historicalResults.replaceChildren();
+    results.forEach(result => {
+      const row = document.createElement('tr');
+      const values = [
+        result.run, `account ${result.account}`, result.username,
+        formatTimestamp(result.startedAt), formatTimestamp(result.finishedAt),
+        result.durationMs ? formatDuration(result.durationMs) : '-', result.status
+      ];
+      values.forEach(value => {
+        const cell = document.createElement('td');
+        cell.textContent = value || '-';
+        row.appendChild(cell);
+      });
+      const paymentCell = document.createElement('td');
+      if (result.paymentUrl) {
+        const link = document.createElement('a');
+        link.href = result.paymentUrl;
+        link.target = '_blank';
+        link.rel = 'noreferrer';
+        link.textContent = 'Open payment';
+        paymentCell.appendChild(link);
+      } else paymentCell.textContent = '-';
+      row.appendChild(paymentCell);
+      historicalResults.appendChild(row);
+    });
+  } catch (error) {
+    historicalResults.textContent = error.message;
+  }
+}
+
 function renderAccountRows(accounts = []) {
   accountRows.replaceChildren();
   accounts.forEach((account, index) => {
     const row = document.createElement('tr');
     row.id = `account-row-${index + 1}`;
-    row.innerHTML = `<td>${account.username}</td><td class="account-state">Waiting</td>`;
+    row.dataset.name = String(account.fullName || '').toLowerCase();
+    [
+      `account ${index + 1}`, account.username, account.email, account.fullName,
+      account.passport, '-', '-', '-', 'Waiting', '-'
+    ].forEach((value, cellIndex) => {
+      const cell = document.createElement('td');
+      if (cellIndex === 8) cell.className = 'account-state';
+      cell.textContent = value || '-';
+      row.appendChild(cell);
+    });
     accountRows.appendChild(row);
   });
+  updateAccountRows();
 }
 
 function updateAccountRows() {
   for (const [index, state] of accountRuns) {
     const row = document.querySelector(`#account-row-${index}`);
     if (!row) continue;
-    row.querySelector('.account-state').textContent = state.status;
+    const cells = row.querySelectorAll('td');
+    cells[5].textContent = formatTimestamp(state.startedAt);
+    cells[6].textContent = formatTimestamp(state.finishedAt);
+    cells[7].textContent = state.startedAt && state.finishedAt ? formatDuration(state.finishedAt - state.startedAt) : '-';
+    row.querySelector('.account-state').textContent = state.status || 'Waiting';
+    cells[9].replaceChildren();
+    if (state.paymentUrl) {
+      const link = document.createElement('a');
+      link.href = state.paymentUrl;
+      link.target = '_blank';
+      link.rel = 'noreferrer';
+      link.textContent = 'Open payment';
+      cells[9].appendChild(link);
+    } else cells[9].textContent = '-';
   }
+  const wanted = nameFilter.value.trim().toLowerCase();
+  document.querySelectorAll('#accountRows tr').forEach(row => {
+    row.hidden = Boolean(wanted) && !row.dataset.name.includes(wanted);
+  });
 }
 
 function resetRunMonitor() {
@@ -71,14 +198,25 @@ function processLogLine(line) {
   const timestampMatch = line.match(/\] \[(\d{4}-\d\d-\d\dT[^\]]+)\]/);
   const timestamp = timestampMatch ? Date.parse(timestampMatch[1]) : Date.now();
   const state = accountRuns.get(index) || { status: 'Waiting' };
-  if (line.includes('BROWSER_LAUNCH_START')) { state.startedAt = timestamp; state.status = 'Launching'; }
+  if (line.includes('BROWSER_LAUNCH_START')) { state.launchStartedAt = timestamp; state.status = 'Launching'; }
+  else if (line.includes('SELECT_COUNTRY ') && /\bOPEN\b/i.test(line)) { state.startedAt = timestamp; state.status = 'Country open'; }
   else if (line.includes('BROWSER_LAUNCH_READY')) state.status = 'Browser ready';
   else if (line.includes('NAVIGATE ')) {
     const url = line.match(/NAVIGATE (https?:\/\/\S+)/)?.[1];
     if (url && /pay\.aspx|paymentgateway/i.test(url)) { state.paymentUrl = url; state.finishedAt = timestamp; state.status = 'Payment ready'; }
     else if (state.status !== 'Payment ready') state.status = 'Navigating';
   } else if (line.includes('dừng trước trang thanh toán')) { state.finishedAt ||= timestamp; state.status = 'Payment ready'; }
+  else if (line.includes('PAYMENT_LINK ')) {
+    state.paymentUrl = line.match(/PAYMENT_LINK (https?:\/\/\S+)/)?.[1] || state.paymentUrl;
+    state.finishedAt ||= timestamp;
+    state.status = 'Payment ready';
+  }
+  else if (line.includes('ACCOUNT_FINISHED')) {
+    state.finishedAt = timestamp;
+    state.status = line.match(/ACCOUNT_FINISHED status=([^ ]+)/)?.[1] || 'Finished';
+  }
   else if (line.includes('ACCOUNT_ERROR')) state.status = 'Error';
+  if (/ACCOUNT_ERROR|lỗi:|RUN_FINISHED/.test(line)) state.finishedAt ||= timestamp;
   accountRuns.set(index, state);
   updateAccountRows();
 }
@@ -171,7 +309,12 @@ function checkData() {
   try {
     const data = parseData();
     document.querySelector('#profiles').textContent = String(data.profiles);
-    renderAccountRows(JSON.parse(data.accounts));
+    const applicant = JSON.parse(data.applicant);
+    renderAccountRows(JSON.parse(data.accounts).map(account => ({
+      ...account,
+      fullName: [applicant.personal?.given_name_1, applicant.personal?.family_name].filter(Boolean).join(' '),
+      passport: applicant.identification?.passport_number
+    })));
     setDataStatus(`${data.profiles} account${data.profiles === 1 ? '' : 's'} ready`, 'valid');
     return data;
   } catch (error) {
@@ -237,6 +380,7 @@ document.querySelectorAll('.tab').forEach(tab => tab.addEventListener('click', (
 }));
 applicantInput.addEventListener('input', checkData);
 accountsInput.addEventListener('input', checkData);
+nameFilter.addEventListener('input', updateAccountRows);
 
 start.addEventListener('click', async () => {
   if (!await saveData(false)) {
@@ -254,8 +398,11 @@ start.addEventListener('click', async () => {
 });
 stop.addEventListener('click', async () => { await window.runnerApi.stop(); append('[app] Stop requested\n'); });
 document.querySelector('#clear').addEventListener('click', () => { log.replaceChildren(); lastEvent.textContent = 'Waiting'; });
+document.querySelector('#refreshLogs').addEventListener('click', loadArchivedLogs);
+logFilter.addEventListener('input', renderArchivedLogs);
 window.runnerApi.onOutput(data => { append(data.text, data.type); processRunnerOutput(data.text); });
 window.runnerApi.onStatus(data => setRunning(data.running));
 window.runnerApi.onExit(data => { setRunning(false); append(`[app] Runner exited with code ${data.code}\n`); });
 loadData();
+loadArchivedLogs();
 loadTelegram();

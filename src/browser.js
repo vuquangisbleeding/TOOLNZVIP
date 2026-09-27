@@ -15,6 +15,12 @@ function normalizeProxy(proxy) {
   };
 }
 
+function maskApiKey(apiKey) {
+  const value = String(apiKey || '');
+  if (value.length <= 10) return `${value.slice(0, 2)}...${value.slice(-2)}`;
+  return `${value.slice(0, 8)}...${value.slice(-5)}`;
+}
+
 async function launchBrowser(args, index, proxy) {
   const profilePath = path.join(config.profileRoot, `account-${index + 1}`);
   await fs.mkdir(profilePath, { recursive: true });
@@ -45,24 +51,28 @@ async function configureProxyAuthentication(browser, proxy) {
 }
 
 async function syncCapSolverApiKey(browser, extensionPath) {
-  const apiKey = await readCapSolverApiKey(extensionPath);
+  let apiKey;
+  try {
+    apiKey = await readCapSolverApiKey(extensionPath);
+  } catch (error) {
+    console.error(`CapSolver API key MISSING: ${error.message}`);
+    throw error;
+  }
+  if (!apiKey.trim()) {
+    console.error('CapSolver API key MISSING: giá trị rỗng');
+    throw new Error('CapSolver API key đang rỗng');
+  }
+  console.log(`CapSolver API key chuẩn bị sync: ${maskApiKey(apiKey)} length=${apiKey.length}`);
   let lastError;
   for (let attempt = 1; attempt <= config.capsolverSyncRetries; attempt += 1) {
-    let page;
     try {
       let extensionTarget = browser.targets().find(target => target.url().startsWith('chrome-extension://'));
       if (!extensionTarget) {
         extensionTarget = await browser.waitForTarget(target => target.url().startsWith('chrome-extension://'), { timeout: 15000 });
       }
-      const extensionId = extensionTarget.url().match(/^chrome-extension:\/\/([^/]+)/)?.[1];
-      if (!extensionId) throw new Error('Không tìm thấy ID của CapSolver extension đang được nạp');
-      page = await browser.newPage();
-      await page.goto(`chrome-extension://${extensionId}/www/index.html#/popup`, { waitUntil: 'domcontentloaded', timeout: 15000 });
-      await page.waitForFunction(async () => {
-        const current = await chrome.storage.local.get('defaultConfig');
-        return Boolean(current.defaultConfig);
-      }, { timeout: 15000 });
-      const synced = await page.evaluate(async key => {
+      const worker = await extensionTarget.worker();
+      if (!worker) throw new Error('CapSolver service worker chưa sẵn sàng');
+      const synced = await worker.evaluate(async key => {
         const current = await chrome.storage.local.get('defaultConfig');
         const nextConfig = {
           ...(current.defaultConfig || {}),
@@ -75,14 +85,12 @@ async function syncCapSolverApiKey(browser, extensionPath) {
         return saved.defaultConfig?.apiKey === key;
       }, apiKey);
       if (!synced) throw new Error('Không xác nhận được API key trong extension storage');
-      console.log(`CapSolver API key đã đồng bộ vào extension storage attempt=${attempt}`);
+      console.log(`CapSolver API key đã đồng bộ vào extension storage key=${maskApiKey(apiKey)} length=${apiKey.length} attempt=${attempt}`);
       return;
     } catch (error) {
       lastError = error;
       console.error(`CapSolver sync attempt=${attempt}/${config.capsolverSyncRetries} lỗi: ${error.message}`);
       await new Promise(resolve => setTimeout(resolve, 1000));
-    } finally {
-      await page?.close().catch(() => {});
     }
   }
   throw lastError || new Error('Không đồng bộ được CapSolver API key');

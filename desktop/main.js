@@ -43,6 +43,49 @@ async function readDataFiles() {
   return { applicant, accounts };
 }
 
+async function listLogFiles() {
+  const root = await dataRoot();
+  const logsRoot = path.join(root, 'logs');
+  await fs.mkdir(logsRoot, { recursive: true });
+  const entries = await fs.readdir(logsRoot, { withFileTypes: true });
+  const files = await Promise.all(entries.filter(entry => entry.isFile() && entry.name.endsWith('.log')).map(async entry => {
+    const filePath = path.join(logsRoot, entry.name);
+    const stats = await fs.stat(filePath);
+    return { name: entry.name, size: stats.size, modifiedAt: stats.mtimeMs };
+  }));
+  return files.sort((left, right) => right.modifiedAt - left.modifiedAt);
+}
+
+async function readLogFile(_event, name) {
+  if (typeof name !== 'string' || path.basename(name) !== name || !name.endsWith('.log')) {
+    throw new Error('Tên log không hợp lệ.');
+  }
+  const root = await dataRoot();
+  return fs.readFile(path.join(root, 'logs', name), 'utf8');
+}
+
+async function listLogResults() {
+  const files = await listLogFiles();
+  const accountFiles = files.filter(file => /-account-\d+-[^/]+\.log$/.test(file.name));
+  const results = [];
+  for (const file of accountFiles) {
+    const content = await readLogFile(null, file.name);
+    const accountMatch = file.name.match(/-account-(\d+)-(.+)\.log$/);
+    const account = accountMatch ? Number(accountMatch[1]) : 0;
+    const username = accountMatch ? accountMatch[2] : '-';
+    const timestamp = line => line.match(/\] \[(\d{4}-\d\d-\d\dT[^\]]+)\]/)?.[1];
+    const lines = content.split('\n');
+    const startLine = lines.find(line => /SELECT_COUNTRY .*\bOPEN\b/i.test(line));
+    const finishLine = lines.find(line => /ACCOUNT_FINISHED|PAYMENT_LINK|ACCOUNT_ERROR/.test(line)) || lines.at(-2) || '';
+    const startedAt = startLine ? Date.parse(timestamp(startLine)) : null;
+    const finishedAt = finishLine ? Date.parse(timestamp(finishLine)) : null;
+    const paymentUrl = content.match(/PAYMENT_LINK (https?:\/\/\S+)/)?.[1] || null;
+    const status = paymentUrl ? 'Payment ready' : finishLine.match(/ACCOUNT_FINISHED status=([^ ]+)/)?.[1] || (finishLine.includes('ACCOUNT_ERROR') ? 'Error' : 'Incomplete');
+    results.push({ run: file.name.match(/^run-([^]+?)-account-/)?.[1] || file.name, account, username, startedAt, finishedAt, durationMs: startedAt && finishedAt ? finishedAt - startedAt : null, status, paymentUrl });
+  }
+  return results.sort((left, right) => (right.startedAt || 0) - (left.startedAt || 0));
+}
+
 async function readTelegramSettings() {
   const root = await dataRoot();
   const envFile = path.join(root, '.env');
@@ -197,6 +240,9 @@ app.whenReady().then(() => {
   ipcMain.handle('runner-start', startRunner);
   ipcMain.handle('runner-stop', stopRunner);
   ipcMain.handle('data-load', readDataFiles);
+  ipcMain.handle('logs-list', listLogFiles);
+  ipcMain.handle('logs-read', readLogFile);
+  ipcMain.handle('logs-results', listLogResults);
   ipcMain.handle('data-save', saveData);
   ipcMain.handle('telegram-load', readTelegramSettings);
   ipcMain.handle('telegram-save', saveTelegramSettings);

@@ -17,7 +17,6 @@ const config = {
   countryPollMs: Number(process.env.COUNTRY_POLL_MS || 5000),
   captchaTimeoutMs: Number(process.env.CAPTCHA_TIMEOUT_MS || 120000),
   captchaPollMs: Number(process.env.CAPTCHA_POLL_MS || 50),
-  capsolverSyncStaggerMs: Number(process.env.CAPSOLVER_SYNC_STAGGER_MS || 1000),
   capsolverSyncRetries: Number(process.env.CAPSOLVER_SYNC_RETRIES || 3),
   manualRecoveryPollMs: Number(process.env.MANUAL_RECOVERY_POLL_MS || 1000),
   clickWaitTimeoutMs: Number(process.env.CLICK_WAIT_TIMEOUT_MS || 1500),

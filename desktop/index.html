@@ -25,12 +25,23 @@
       </section>
       <section class="metrics"><div><span>Profiles</span><strong id="profiles">-</strong></div><div><span>Run time</span><strong id="runTime">00:00:00</strong></div><div><span>Last event</span><strong id="lastEvent">Waiting</strong></div></section>
       <section class="accounts-panel">
-        <div class="panel-head"><div><p class="eyebrow">ACCOUNT MONITOR</p><h3>Payment progress</h3></div></div>
-        <div class="table-wrap"><table><thead><tr><th>Account</th><th>Status</th></tr></thead><tbody id="accountRows"></tbody></table></div>
+        <div class="panel-head dashboard-head"><div><p class="eyebrow">ACCOUNT MONITOR</p><h3>Run results</h3></div><label class="filter-field">Filter full name<input id="nameFilter" type="search" placeholder="Search by name" autocomplete="off"></label></div>
+        <div class="table-wrap"><table><thead><tr><th>Nick</th><th>Username</th><th>Email</th><th>Full name</th><th>Passport</th><th>Started</th><th>Finished</th><th>Duration</th><th>Status</th><th>Payment</th></tr></thead><tbody id="accountRows"></tbody></table></div>
       </section>
     </section>
     <section class="tab-panel" data-panel="logs">
       <section class="log-panel log-tab-panel"><div class="panel-head"><div><p class="eyebrow">LIVE OUTPUT</p><h3>Runner log</h3></div><button id="clear" class="clear">Clear</button></div><pre id="log"></pre></section>
+      <section class="history-panel">
+        <div class="panel-head"><div><p class="eyebrow">ARCHIVE</p><h3>Previous runs</h3><p class="muted small">Chọn một file log để xem toàn bộ nội dung của lần chạy trước.</p></div><button id="refreshLogs" class="secondary">Refresh</button></div>
+        <div class="history-layout">
+          <aside class="history-list"><label class="filter-field">Filter logs<input id="logFilter" type="search" placeholder="account, date, status" autocomplete="off"></label><div id="logFiles" class="log-files"></div></aside>
+          <article class="history-view"><div class="history-meta"><strong id="selectedLogName">Chưa chọn log</strong><span id="selectedLogSize"></span></div><pre id="historicalLog">Chọn một file log bên trái để xem.</pre></article>
+        </div>
+      </section>
+      <section class="history-panel result-panel">
+        <div class="panel-head"><div><p class="eyebrow">ARCHIVED RESULTS</p><h3>Previous results</h3><p class="muted small">Kết quả được tổng hợp từ các account log đã lưu.</p></div></div>
+        <div class="table-wrap"><table><thead><tr><th>Run</th><th>Account</th><th>Username</th><th>Started</th><th>Finished</th><th>Duration</th><th>Status</th><th>Payment</th></tr></thead><tbody id="historicalResults"></tbody></table></div>
+      </section>
     </section>
     <section class="tab-panel" data-panel="data">
     <section class="data-panel">

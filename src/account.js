@@ -20,9 +20,9 @@ async function runApplicant(browser, baseApplicant, account, index) {
   const label = `account ${index + 1}: ${account.username}`;
   await initializeAccountLogger(index, account.username);
   console.log(`[${label}] ACCOUNT_LOG_FILE ${accountLogFile(index)}`);
-  const startedAt = Date.now(); const stats = { captchaMs: 0 };
+  let startedAt = null; const stats = { captchaMs: 0 };
   const result = { label, status: 'ERROR', runtimeMs: 0, captchaMs: 0, applicantInfo: '' };
-  const finish = status => Object.assign(result, { status, runtimeMs: Date.now() - startedAt, captchaMs: stats.captchaMs });
+  const finish = status => Object.assign(result, { status, runtimeMs: startedAt ? Date.now() - startedAt : 0, captchaMs: stats.captchaMs });
   const page = await getSinglePage(browser);
   await authenticateProxy(page, account.proxy);
   const applicant = structuredClone(baseApplicant);
@@ -34,7 +34,8 @@ async function runApplicant(browser, baseApplicant, account, index) {
   await page.evaluateOnNewDocument(() => Object.defineProperty(navigator, 'webdriver', { get: () => undefined }));
   try {
     await login(page, account.username, account.password, label, stats);
-    await continueToApplication(page, applicant, label, stats);
+    const entry = await continueToApplication(page, applicant, label, stats);
+    if (entry?.startedAt) startedAt = entry.startedAt;
     return await walkWizard(page, applicant, account, label, stats, result, finish);
   } catch (error) {
     console.error(`[${label}] lỗi: ${error.message}`);
@@ -42,7 +43,8 @@ async function runApplicant(browser, baseApplicant, account, index) {
       await waitForManualRecovery(page, label, error);
       console.log(`[${label}] MANUAL_RECOVERY_RESUME`);
       await recoverHighLoad(page, label);
-      await continueToApplication(page, applicant, label, stats).catch(() => {});
+      const entry = await continueToApplication(page, applicant, label, stats).catch(() => null);
+      if (entry?.startedAt) startedAt = entry.startedAt;
       return await walkWizard(page, applicant, account, label, stats, result, finish);
     } catch (recoveryError) {
       console.error(`[${label}] MANUAL_RECOVERY_ERROR ${recoveryError.message}`);
