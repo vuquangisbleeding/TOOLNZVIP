@@ -7,9 +7,10 @@ function normalizeProxy(proxy) {
   const input = typeof proxy === 'string' ? { server: proxy } : proxy;
   if (!input.server || typeof input.server !== 'string') throw new Error('proxy phải là chuỗi hoặc object có server');
   const parsed = new URL(input.server.includes('://') ? input.server : `http://${input.server}`);
-  if (!parsed.hostname || !parsed.port) throw new Error(`Proxy không hợp lệ: ${input.server}`);
+  const port = parsed.port || (parsed.protocol === 'https:' ? '443' : parsed.protocol === 'http:' ? '80' : '');
+  if (!['http:', 'https:'].includes(parsed.protocol) || !parsed.hostname || !port) throw new Error(`Proxy không hợp lệ: ${input.server}`);
   return {
-    server: `${parsed.protocol}//${parsed.host}`,
+    server: `${parsed.protocol}//${parsed.hostname}:${port}`,
     username: input.username || (parsed.username ? decodeURIComponent(parsed.username) : ''),
     password: input.password || (parsed.password ? decodeURIComponent(parsed.password) : '')
   };
@@ -103,4 +104,4 @@ async function getSinglePage(browser) {
   return page;
 }
 
-module.exports = { launchBrowser, authenticateProxy, configureProxyAuthentication, syncCapSolverApiKey, getSinglePage };
+module.exports = { launchBrowser, authenticateProxy, configureProxyAuthentication, syncCapSolverApiKey, getSinglePage, normalizeProxy, maskApiKey };

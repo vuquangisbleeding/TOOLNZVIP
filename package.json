@@ -6,6 +6,7 @@
   "main": "desktop/main.js",
   "scripts": {
     "start": "node src/runner.js",
+    "test": "node --test test",
     "desktop": "electron desktop/main.js",
     "dist:mac": "electron-builder --mac",
     "dist:win": "electron-builder --win"

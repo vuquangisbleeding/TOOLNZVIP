@@ -21,7 +21,14 @@ const historicalLog = document.querySelector('#historicalLog');
 const selectedLogName = document.querySelector('#selectedLogName');
 const selectedLogSize = document.querySelector('#selectedLogSize');
 const historicalResults = document.querySelector('#historicalResults');
+const formEditor = document.querySelector('#formEditor');
+const jsonEditor = document.querySelector('#jsonEditor');
+const formMode = document.querySelector('#formMode');
+const jsonMode = document.querySelector('#jsonMode');
+const accountsFormRows = document.querySelector('#accountsFormRows');
+const addAccount = document.querySelector('#addAccount');
 const accountRuns = new Map();
+let dataMode = 'form';
 let runStartedAt = null;
 let logRemainder = '';
 let clockTimer = null;
@@ -42,6 +49,77 @@ function formatFileSize(bytes) {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function readPath(object, path) {
+  return path.split('.').reduce((value, key) => value?.[key], object) ?? '';
+}
+
+function writePath(object, path, value) {
+  const keys = path.split('.');
+  const lastKey = keys.pop();
+  const target = keys.reduce((current, key) => current[key] ||= {}, object);
+  target[lastKey] = value;
+}
+
+function renderForm(applicant, accounts) {
+  formEditor.querySelectorAll('[data-path]').forEach(input => {
+    input.value = readPath(applicant, input.dataset.path);
+  });
+  accountsFormRows.replaceChildren();
+  accounts.forEach((account, index) => {
+    const row = document.createElement('div');
+    row.className = 'account-form-row';
+    row.dataset.index = index;
+    [['username', 'Username'], ['password', 'Password'], ['email', 'Email'], ['proxy', 'Proxy (optional)']].forEach(([key, label]) => {
+      const field = document.createElement('label');
+      field.textContent = label;
+      const input = document.createElement('input');
+      input.dataset.accountField = key;
+      input.type = key === 'password' ? 'password' : key === 'email' ? 'email' : 'text';
+      input.value = account[key] || '';
+      field.appendChild(input);
+      row.appendChild(field);
+    });
+    const remove = document.createElement('button');
+    remove.type = 'button';
+    remove.className = 'small-button danger-button';
+    remove.textContent = 'Remove';
+    remove.addEventListener('click', () => row.remove());
+    row.appendChild(remove);
+    accountsFormRows.appendChild(row);
+  });
+}
+
+function syncFormToJson() {
+  const applicant = JSON.parse(applicantInput.value || '{}');
+  formEditor.querySelectorAll('[data-path]').forEach(input => writePath(applicant, input.dataset.path, input.value.trim()));
+  const accounts = [...accountsFormRows.querySelectorAll('.account-form-row')].map(row => {
+    const account = {};
+    row.querySelectorAll('[data-account-field]').forEach(input => {
+      if (input.value.trim() !== '') account[input.dataset.accountField] = input.value.trim();
+    });
+    return account;
+  });
+  applicantInput.value = JSON.stringify(applicant, null, 2);
+  accountsInput.value = JSON.stringify(accounts, null, 2);
+}
+
+function setDataMode(mode) {
+  dataMode = mode;
+  const formActive = mode === 'form';
+  formEditor.hidden = !formActive;
+  jsonEditor.hidden = formActive;
+  formMode.classList.toggle('active', formActive);
+  jsonMode.classList.toggle('active', !formActive);
+  if (formActive) {
+    try { renderForm(JSON.parse(applicantInput.value), JSON.parse(accountsInput.value)); } catch {}
+  }
+}
+
+function setFormTab(section) {
+  document.querySelectorAll('.form-tab').forEach(tab => tab.classList.toggle('active', tab.dataset.formTab === section));
+  document.querySelectorAll('[data-form-section]').forEach(panel => panel.classList.toggle('active', panel.dataset.formSection === section));
 }
 
 let archivedLogs = [];
@@ -310,7 +388,9 @@ function checkData() {
     const data = parseData();
     document.querySelector('#profiles').textContent = String(data.profiles);
     const applicant = JSON.parse(data.applicant);
-    renderAccountRows(JSON.parse(data.accounts).map(account => ({
+    const accounts = JSON.parse(data.accounts);
+    renderForm(applicant, accounts);
+    renderAccountRows(accounts.map(account => ({
       ...account,
       fullName: [applicant.personal?.given_name_1, applicant.personal?.family_name].filter(Boolean).join(' '),
       passport: applicant.identification?.passport_number
@@ -335,6 +415,7 @@ async function loadData() {
 }
 
 async function saveData(showMessage = true) {
+  if (dataMode === 'form') syncFormToJson();
   const data = checkData();
   if (!data) return false;
   try {
@@ -367,6 +448,29 @@ async function exportFile(kind) {
 }
 
 document.querySelector('#saveData').addEventListener('click', () => saveData());
+formMode.addEventListener('click', () => setDataMode('form'));
+document.querySelectorAll('.form-tab').forEach(tab => tab.addEventListener('click', () => setFormTab(tab.dataset.formTab)));
+jsonMode.addEventListener('click', () => {
+  if (dataMode === 'form') syncFormToJson();
+  setDataMode('json');
+});
+addAccount.addEventListener('click', () => {
+  const row = document.createElement('div');
+  row.className = 'account-form-row';
+  [['username', 'Username'], ['password', 'Password'], ['email', 'Email'], ['proxy', 'Proxy (optional)']].forEach(([key, label]) => {
+    const field = document.createElement('label');
+    field.textContent = label;
+    const input = document.createElement('input');
+    input.dataset.accountField = key;
+    input.type = key === 'password' ? 'password' : key === 'email' ? 'email' : 'text';
+    field.appendChild(input);
+    row.appendChild(field);
+  });
+  const remove = document.createElement('button');
+  remove.type = 'button'; remove.className = 'small-button danger-button'; remove.textContent = 'Remove';
+  remove.addEventListener('click', () => row.remove());
+  row.appendChild(remove); accountsFormRows.appendChild(row);
+});
 document.querySelector('#saveTelegram').addEventListener('click', saveTelegram);
 document.querySelector('#testTelegram').addEventListener('click', testTelegram);
 document.querySelector('#importApplicant').addEventListener('click', () => importFile('applicant'));
