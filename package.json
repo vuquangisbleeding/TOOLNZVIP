@@ -1,0 +1,45 @@
+{
+  "name": "inz-puppeteer-multi-tab",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Run one Puppeteer Chrome tab per applicant email.",
+  "main": "desktop/main.js",
+  "scripts": {
+    "start": "node src/runner.js",
+    "desktop": "electron desktop/main.js",
+    "dist:mac": "electron-builder --mac",
+    "dist:win": "electron-builder --win"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.7",
+    "puppeteer": "^24.20.0"
+  },
+  "devDependencies": {
+    "electron": "^37.2.6",
+    "electron-builder": "^24.13.3"
+  },
+  "build": {
+    "appId": "com.inz.runner",
+    "productName": "INZ Runner",
+    "asarUnpack": [
+      "src/**/*"
+    ],
+    "files": [
+      "desktop/**/*",
+      "src/**/*",
+      "applicant.json",
+      "emails.json",
+      ".env.example",
+      "package.json"
+    ],
+    "extraResources": [
+      "CapSolver.Browser.Extension-chrome-v1.7.1/**/*"
+    ],
+    "mac": {
+      "target": "dmg"
+    },
+    "win": {
+      "target": "nsis"
+    }
+  }
+}

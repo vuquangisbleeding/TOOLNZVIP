@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>INZ Runner</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main class="shell">
+    <header class="topbar">
+      <div><p class="eyebrow">IMMIGRATION NZ</p><h1>Runner control</h1></div>
+      <div class="status"><span id="statusDot"></span><span id="statusText">Ready</span></div>
+    </header>
+    <nav class="tabs" aria-label="Main sections">
+      <button class="tab active" data-tab="run">Run</button>
+      <button class="tab" data-tab="logs">Runner log</button>
+      <button class="tab" data-tab="data">Applicant data</button>
+      <button class="tab" data-tab="settings">Settings</button>
+    </nav>
+    <section class="tab-panel active" data-panel="run">
+      <section class="hero">
+        <div><p class="eyebrow">MULTI-PROFILE AUTOMATION</p><h2>Runner control room</h2><p class="muted">Theo dõi trạng thái từng account trong một màn hình.</p></div>
+        <div class="actions"><button id="start" class="primary">Start runner</button><button id="stop" class="secondary" disabled>Stop</button></div>
+      </section>
+      <section class="metrics"><div><span>Profiles</span><strong id="profiles">-</strong></div><div><span>Run time</span><strong id="runTime">00:00:00</strong></div><div><span>Last event</span><strong id="lastEvent">Waiting</strong></div></section>
+      <section class="accounts-panel">
+        <div class="panel-head"><div><p class="eyebrow">ACCOUNT MONITOR</p><h3>Payment progress</h3></div></div>
+        <div class="table-wrap"><table><thead><tr><th>Account</th><th>Status</th></tr></thead><tbody id="accountRows"></tbody></table></div>
+      </section>
+    </section>
+    <section class="tab-panel" data-panel="logs">
+      <section class="log-panel log-tab-panel"><div class="panel-head"><div><p class="eyebrow">LIVE OUTPUT</p><h3>Runner log</h3></div><button id="clear" class="clear">Clear</button></div><pre id="log"></pre></section>
+    </section>
+    <section class="tab-panel" data-panel="data">
+    <section class="data-panel">
+      <div class="panel-head data-head">
+        <div><p class="eyebrow">INPUT WORKSPACE</p><h3>Applicant data</h3><p class="muted small">Nhập JSON trực tiếp hoặc nạp file. Lưu để dùng cho lần chạy tiếp theo.</p></div>
+        <div class="data-actions"><button id="saveData" class="primary">Save data</button><span id="dataStatus" class="data-status">Loading...</span></div>
+      </div>
+      <div class="editors">
+        <article class="editor-card">
+          <div class="editor-head"><div><strong>Applicant profile</strong><span>applicant.json</span></div><div class="editor-actions"><button id="importApplicant" class="small-button">Import</button><button id="exportApplicant" class="small-button">Export</button></div></div>
+          <textarea id="applicantInput" spellcheck="false" aria-label="Applicant JSON"></textarea>
+        </article>
+        <article class="editor-card">
+          <div class="editor-head"><div><strong>Accounts</strong><span>emails.json</span></div><div class="editor-actions"><button id="importAccounts" class="small-button">Import</button><button id="exportAccounts" class="small-button">Export</button></div></div>
+          <textarea id="accountsInput" spellcheck="false" aria-label="Accounts JSON"></textarea>
+        </article>
+      </div>
+    </section>
+    </section>
+    <section class="tab-panel" data-panel="settings">
+    <section class="settings-panel">
+      <div><p class="eyebrow">NOTIFICATIONS</p><h3>Telegram delivery</h3><p class="muted small">Tùy chọn. Để trống nếu không muốn gửi kết quả qua Telegram.</p></div>
+      <div class="settings-grid">
+        <label>Scheme country<input id="schemeCountry" type="text" autocomplete="off" placeholder="CROATIA"></label>
+        <label>CapSolver API key<input id="capsolverApiKey" type="password" autocomplete="off" placeholder="CAP-..."></label>
+        <label>Bot token<input id="telegramToken" type="password" autocomplete="off" placeholder="TELEGRAM_BOT_TOKEN"></label>
+        <label>Chat ID<input id="telegramChatId" type="text" autocomplete="off" placeholder="TELEGRAM_CHAT_ID"></label>
+        <div class="settings-save"><button id="saveTelegram" class="secondary">Save Telegram settings</button><button id="testTelegram" class="small-button">Send test</button><span id="telegramStatus" class="data-status"></span></div>
+      </div>
+    </section>
+    </section>
+  </main>
+  <script src="renderer.js"></script>
+</body>
+</html>

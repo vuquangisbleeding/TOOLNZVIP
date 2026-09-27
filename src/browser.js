@@ -1,0 +1,90 @@
+const puppeteer = require('puppeteer');
+const config = require('./config');
+const { fs, path, readCapSolverApiKey } = require('./io');
+
+function normalizeProxy(proxy) {
+  if (!proxy) return null;
+  const input = typeof proxy === 'string' ? { server: proxy } : proxy;
+  if (!input.server || typeof input.server !== 'string') throw new Error('proxy phải là chuỗi hoặc object có server');
+  const parsed = new URL(input.server.includes('://') ? input.server : `http://${input.server}`);
+  if (!parsed.hostname || !parsed.port) throw new Error(`Proxy không hợp lệ: ${input.server}`);
+  return {
+    server: `${parsed.protocol}//${parsed.host}`,
+    username: input.username || (parsed.username ? decodeURIComponent(parsed.username) : ''),
+    password: input.password || (parsed.password ? decodeURIComponent(parsed.password) : '')
+  };
+}
+
+async function launchBrowser(args, index, proxy) {
+  const profilePath = path.join(config.profileRoot, `account-${index + 1}`);
+  await fs.mkdir(profilePath, { recursive: true });
+  const normalizedProxy = normalizeProxy(proxy);
+  const launchArgs = [...args];
+  if (normalizedProxy) launchArgs.push(`--proxy-server=${normalizedProxy.server}`);
+  console.log(`[account ${index + 1}] Chrome profile: ${profilePath}`);
+  if (normalizedProxy) console.log(`[account ${index + 1}] Proxy: ${normalizedProxy.server}`);
+  return puppeteer.launch({ headless: config.headless, executablePath: config.chromeExecutablePath, userDataDir: profilePath, args: launchArgs, defaultViewport: null });
+}
+
+async function authenticateProxy(page, proxy) {
+  const normalizedProxy = normalizeProxy(proxy);
+  if (normalizedProxy?.username || normalizedProxy?.password) {
+    await page.authenticate({ username: normalizedProxy.username, password: normalizedProxy.password });
+  }
+}
+
+async function configureProxyAuthentication(browser, proxy) {
+  const normalizedProxy = normalizeProxy(proxy);
+  if (!normalizedProxy?.username && !normalizedProxy?.password) return;
+  const credentials = { username: normalizedProxy.username, password: normalizedProxy.password };
+  const applyCredentials = page => page.authenticate(credentials).catch(() => {});
+  await Promise.all((await browser.pages()).map(applyCredentials));
+  browser.on('targetcreated', target => {
+    if (target.type() === 'page') target.page().then(applyCredentials).catch(() => {});
+  });
+}
+
+async function syncCapSolverApiKey(browser, extensionPath) {
+  const apiKey = await readCapSolverApiKey(extensionPath);
+  let extensionTarget = browser.targets().find(target => target.url().startsWith('chrome-extension://'));
+  if (!extensionTarget) {
+    try { extensionTarget = await browser.waitForTarget(target => target.url().startsWith('chrome-extension://'), { timeout: 5000 }); } catch {}
+  }
+  const extensionId = extensionTarget?.url().match(/^chrome-extension:\/\/([^/]+)/)?.[1];
+  if (!extensionId) throw new Error('Không tìm thấy ID của CapSolver extension đang được nạp. Kiểm tra extension path và manifest.');
+  const page = await browser.newPage();
+  try {
+    await page.goto(`chrome-extension://${extensionId}/www/index.html#/popup`, { waitUntil: 'domcontentloaded' });
+    await page.waitForFunction(async () => {
+      const current = await chrome.storage.local.get('defaultConfig');
+      return Boolean(current.defaultConfig);
+    }, { timeout: 5000 }).catch(() => {});
+    const synced = await page.evaluate(async key => {
+      for (let attempt = 0; attempt < 8; attempt += 1) {
+        const current = await chrome.storage.local.get('defaultConfig');
+        const nextConfig = {
+          ...(current.defaultConfig || {}),
+          apiKey: key,
+          useCapsolver: true,
+          manualSolving: false
+        };
+        await chrome.storage.local.set({ defaultConfig: nextConfig });
+        const saved = await chrome.storage.local.get('defaultConfig');
+        if (saved.defaultConfig?.apiKey === key) return true;
+        await new Promise(resolve => setTimeout(resolve, 250));
+      }
+      return false;
+    }, apiKey);
+    if (!synced) throw new Error('Không xác nhận được API key trong extension storage');
+    console.log('CapSolver API key đã đồng bộ vào extension storage');
+  } finally { await page.close(); }
+}
+
+async function getSinglePage(browser) {
+  const pages = await browser.pages();
+  const page = pages[0] || await browser.newPage();
+  await Promise.all(pages.slice(1).map(extraPage => extraPage.close().catch(() => {})));
+  return page;
+}
+
+module.exports = { launchBrowser, authenticateProxy, configureProxyAuthentication, syncCapSolverApiKey, getSinglePage };
