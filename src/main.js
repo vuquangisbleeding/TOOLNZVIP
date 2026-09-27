@@ -24,6 +24,7 @@ async function runAccount(baseApplicant, account, index, args, extensionPath) {
     if (extensionPath) {
       console.log(`[account ${index + 1}: ${account.username}] CAPSOLVER_SYNC_START`);
       try {
+        await new Promise(resolve => setTimeout(resolve, index * config.capsolverSyncStaggerMs));
         await syncCapSolverApiKey(browser, path.resolve(config.root, extensionPath));
         console.log(`[account ${index + 1}: ${account.username}] CAPSOLVER_SYNC_DONE`);
       } catch (error) {
