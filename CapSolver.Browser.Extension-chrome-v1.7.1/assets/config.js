@@ -1,6 +1,6 @@
 export const defaultConfig = {
   // API key
-  apiKey: '',
+  apiKey: 'kakakak',
 
   // Your Developer appId, Apply in dashboard's developer section
   appId: '',

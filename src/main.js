@@ -1,7 +1,7 @@
 const config = require('./config');
-const { path, readJson } = require('./io');
+const { path, readJson, readCapSolverApiKey } = require('./io');
 const { initializeLogger, initializeAccountLogger, state } = require('./logger');
-const { launchBrowser, configureProxyAuthentication, syncCapSolverApiKey } = require('./browser');
+const { launchBrowser, configureProxyAuthentication, clearCapSolverStoredConfig, maskApiKey } = require('./browser');
 const { runApplicant } = require('./account');
 const { sendTelegramMessage, buildTelegramSummary, applicantSummary } = require('./notifications');
 const { formatDuration } = require('./timing');
@@ -12,7 +12,7 @@ function validateAccounts(accounts) {
   if (accounts.some(account => !account || typeof account !== 'object' || typeof account.username !== 'string' || !account.username.trim() || typeof account.email !== 'string' || !account.email.trim() || typeof account.password !== 'string' || !account.password)) throw new Error('Mỗi phần tử trong emails.json phải có username, password và email');
 }
 
-async function runAccount(baseApplicant, account, index, args, extensionPath) {
+async function runAccount(baseApplicant, account, index, args) {
   const accountStartedAt = Date.now();
   let browser;
   try {
@@ -21,16 +21,7 @@ async function runAccount(baseApplicant, account, index, args, extensionPath) {
     browser = await launchBrowserWithTimeout(args, index, account.username, account.proxy);
     console.log(`[account ${index + 1}: ${account.username}] BROWSER_LAUNCH_READY`);
     await configureProxyAuthentication(browser, account.proxy);
-    if (extensionPath) {
-      console.log(`[account ${index + 1}: ${account.username}] CAPSOLVER_SYNC_START`);
-      try {
-        await syncCapSolverApiKey(browser, path.resolve(config.root, extensionPath));
-        console.log(`[account ${index + 1}: ${account.username}] CAPSOLVER_SYNC_DONE`);
-      } catch (error) {
-        console.error(`[account ${index + 1}: ${account.username}] CAPSOLVER_SYNC_ERROR ${error.message}`);
-        console.error(`[account ${index + 1}: ${account.username}] tiếp tục chạy, CAPTCHA có thể cần xử lý thủ công`);
-      }
-    }
+    if (config.capsolverExtensionPath) await clearCapSolverStoredConfig(browser, config.capsolverExtensionId);
     const result = await runApplicant(browser, baseApplicant, account, index);
     if (!result.runtimeMs) result.runtimeMs = Date.now() - accountStartedAt;
     console.log(`[account ${index + 1}: ${account.username}] ACCOUNT_FINISHED status=${result.status} runtime_ms=${result.runtimeMs}`);
@@ -63,9 +54,14 @@ async function main() {
   if (!config.loginUrl) throw new Error('Cần cấu hình LOGIN_URL trong file .env');
   const [baseApplicant, accounts] = await Promise.all([readJson('applicant.json'), readJson('emails.json')]); validateAccounts(accounts);
   const extensionPath = config.capsolverExtensionPath; const args = ['--start-maximized', '--lang=en-US'];
-  if (extensionPath) { const resolved = path.resolve(config.root, extensionPath); args.push(`--disable-extensions-except=${resolved}`, `--load-extension=${resolved}`); }
+  if (extensionPath) {
+    const resolved = path.resolve(config.root, extensionPath);
+    const apiKey = await readCapSolverApiKey(resolved);
+    console.log(`CapSolver config path=${path.join(resolved, 'assets', 'config.js')} key=${maskApiKey(apiKey)} length=${apiKey.length}`);
+    args.push(`--disable-extensions-except=${resolved}`, `--load-extension=${resolved}`);
+  }
   console.log(`Chuẩn bị chạy ${accounts.length} Chrome profile độc lập.`);
-  const startedAt = Date.now(); await Promise.all(accounts.map((account, index) => runAccount(baseApplicant, account, index, args, extensionPath)));
+  const startedAt = Date.now(); await Promise.all(accounts.map((account, index) => runAccount(baseApplicant, account, index, args)));
   const runtime = Date.now() - startedAt;
   console.log(`[SUMMARY] RUN_FINISHED total_runtime=${formatDuration(runtime)} total_runtime_ms=${runtime} captcha_count=${captchaStats.count} captcha_total=${formatDuration(captchaStats.totalMs)} captcha_total_ms=${captchaStats.totalMs}`);
   console.log(`LOG_FILE ${state.file}`);

@@ -74,7 +74,7 @@ npm run desktop
 
 App có nút `Start runner`, `Stop` và cửa sổ log realtime. Runner vẫn chạy các profile song song như khi dùng `npm start`.
 
-Trong mục `Applicant data`, có thể nhập tay hoặc `Import`/`Export` hai file `applicant.json` và `emails.json`. Mục `Settings` cho phép sửa trực tiếp `SCHEME_COUNTRY`, `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID` và CapSolver API key; bấm `Save Telegram settings` trước khi chạy. Khi packaged, các giá trị được lưu trong thư mục dữ liệu riêng của app.
+Trong mục `Applicant data`, có thể nhập tay hoặc `Import`/`Export` hai file `applicant.json` và `emails.json`. Mục `Settings` cho phép sửa trực tiếp `SCHEME_COUNTRY`, `TELEGRAM_BOT_TOKEN` và `TELEGRAM_CHAT_ID`; CapSolver API key chỉ được đọc từ `assets/config.js`. Khi packaged, các giá trị được lưu trong thư mục dữ liệu riêng của app.
 
 Đóng gói trên macOS:
 
@@ -113,7 +113,7 @@ Các Chrome profile được bắt đầu đồng thời. Profile được lưu 
 
 ## CapSolver
 
-API key có thể nhập trực tiếp trong mục `Settings` của app. Nếu cần kiểm tra thủ công, key nằm trong file:
+API key không lấy từ `.env`, giao diện hoặc Chrome profile. Chỉ sửa key trong file:
 
 ```text
 CapSolver.Browser.Extension-chrome-v1.7.1/assets/config.js
@@ -138,7 +138,7 @@ CAPSOLVER_EXTENSION_PATH=./CapSolver.Browser.Extension-chrome-v1.7.1
 CAPSOLVER_EXTENSION_ID=mbfeabdjfagoifkpcikdaneggoimeidb
 ```
 
-Runner sẽ nạp extension vào từng Chrome profile và tự đồng bộ key từ `assets/config.js` vào storage của extension khi khởi động. Không đưa API key vào `README.md`, `emails.json` hoặc git.
+Runner sẽ ghi key vào `assets/config.js` trước khi nạp extension bằng Puppeteer, đúng theo hướng dẫn tích hợp chính thức của CapSolver. Không đưa API key vào `README.md`, `emails.json` hoặc git.
 
 ## Lưu ý
 

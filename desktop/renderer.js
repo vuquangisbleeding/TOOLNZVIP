@@ -351,8 +351,7 @@ async function saveTelegram() {
     await window.runnerApi.saveTelegram({
       botToken: telegramToken.value.trim(),
       chatId: telegramChatId.value.trim(),
-      schemeCountry: schemeCountry.value,
-      capsolverApiKey: capsolverApiKey.value.trim()
+      schemeCountry: schemeCountry.value
     });
     setTelegramStatus('Saved', 'valid');
     return true;

@@ -7,8 +7,6 @@ function readJson(fileName) {
 }
 
 async function readCapSolverApiKey(extensionPath) {
-  const configuredApiKey = process.env.CAPSOLVER_API_KEY?.trim();
-  if (configuredApiKey) return configuredApiKey;
   const file = path.join(extensionPath, 'assets', 'config.js');
   const source = await fs.readFile(file, 'utf8');
   const match = source.match(/apiKey\s*:\s*(['"])(.*?)\1/);

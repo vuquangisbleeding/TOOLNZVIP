@@ -91,15 +91,10 @@ async function readTelegramSettings() {
   const envFile = path.join(root, '.env');
   const content = await fs.readFile(envFile, 'utf8');
   const readValue = key => content.match(new RegExp(`^${key}=(.*)$`, 'm'))?.[1] || '';
-  let capsolverApiKey = readValue('CAPSOLVER_API_KEY').trim();
-  if (!capsolverApiKey) {
-    const extensionPath = readValue('CAPSOLVER_EXTENSION_PATH') || 'CapSolver.Browser.Extension-chrome-v1.7.1';
-    const extensionRoot = path.isAbsolute(extensionPath) ? extensionPath : path.join(root, extensionPath);
-    try {
-      const capsolverConfig = await fs.readFile(path.join(extensionRoot, 'assets', 'config.js'), 'utf8');
-      capsolverApiKey = capsolverConfig.match(/apiKey\s*:\s*(['"])(.*?)\1/)?.[2] || '';
-    } catch {}
-  }
+  const extensionPath = readValue('CAPSOLVER_EXTENSION_PATH') || 'CapSolver.Browser.Extension-chrome-v1.7.1';
+  const extensionRoot = path.isAbsolute(extensionPath) ? extensionPath : path.join(root, extensionPath);
+  const capsolverConfig = await fs.readFile(path.join(extensionRoot, 'assets', 'config.js'), 'utf8');
+  const capsolverApiKey = capsolverConfig.match(/apiKey\s*:\s*(['"])(.*?)\1/)?.[2]?.trim() || '';
   return {
     botToken: readValue('TELEGRAM_BOT_TOKEN'),
     chatId: readValue('TELEGRAM_CHAT_ID'),
@@ -108,15 +103,14 @@ async function readTelegramSettings() {
   };
 }
 
-async function saveTelegramSettings(_event, { botToken, chatId, schemeCountry, capsolverApiKey }) {
+async function saveTelegramSettings(_event, { botToken, chatId, schemeCountry }) {
   const root = await dataRoot();
   const file = path.join(root, '.env');
   let content = await fs.readFile(file, 'utf8');
   const values = {
     TELEGRAM_BOT_TOKEN: botToken || '',
     TELEGRAM_CHAT_ID: chatId || '',
-    SCHEME_COUNTRY: (schemeCountry || '').trim().toUpperCase(),
-    CAPSOLVER_API_KEY: (capsolverApiKey || '').trim()
+    SCHEME_COUNTRY: (schemeCountry || '').trim().toUpperCase()
   };
   for (const [key, value] of Object.entries(values)) {
     const line = `${key}=${value}`;
