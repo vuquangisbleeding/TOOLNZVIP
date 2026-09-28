@@ -22,20 +22,44 @@ function maskApiKey(apiKey) {
   return `${value.slice(0, 8)}...${value.slice(-5)}`;
 }
 
-async function launchBrowser(args, index, proxy) {
+async function launchBrowser(args, index, proxy, apiKey) {
   const profilePath = path.join(config.profileRoot, `account-${index + 1}`);
   await fs.mkdir(profilePath, { recursive: true });
-  if (config.capsolverExtensionPath) await clearCapSolverProfileStorage(profilePath, config.capsolverExtensionId);
+  if (config.capsolverExtensionPath) await clearCapSolverProfileStorage(profilePath);
   const normalizedProxy = normalizeProxy(proxy);
   const launchArgs = [...args];
   if (normalizedProxy) launchArgs.push(`--proxy-server=${normalizedProxy.server}`);
   console.log(`[account ${index + 1}] Chrome profile: ${profilePath}`);
   if (normalizedProxy) console.log(`[account ${index + 1}] Proxy: ${normalizedProxy.server}`);
-  return puppeteer.launch({ headless: config.headless, executablePath: config.chromeExecutablePath, userDataDir: profilePath, args: launchArgs, defaultViewport: null });
+  const browser = await puppeteer.launch({ headless: config.headless, executablePath: config.chromeExecutablePath, userDataDir: profilePath, args: launchArgs, defaultViewport: null });
+  if (apiKey) await configureCapSolverApiKey(browser, apiKey);
+  return browser;
 }
 
-async function clearCapSolverProfileStorage(profilePath, extensionId) {
-  const storagePath = path.join(profilePath, 'Default', 'Local Extension Settings', extensionId);
+async function configureCapSolverApiKey(browser, apiKey) {
+  const extensionTarget = await browser.waitForTarget(target => target.type() === 'service_worker' && target.url().startsWith('chrome-extension://'), { timeout: 10000 }).catch(() => null);
+  if (!extensionTarget) throw new Error('CapSolver extension không khởi động được: không tìm thấy service worker');
+  const extensionId = new URL(extensionTarget.url()).hostname;
+  const page = await browser.newPage();
+  try {
+    await page.goto(`chrome-extension://${extensionId}/www/index.html#/popup`, { waitUntil: 'domcontentloaded', timeout: 10000 });
+    await page.evaluate(key => new Promise((resolve, reject) => {
+      chrome.storage.local.get('config', result => {
+        if (chrome.runtime.lastError) return reject(new Error(chrome.runtime.lastError.message));
+        chrome.storage.local.set({ config: { ...(result.config || {}), apiKey: key } }, () => {
+          if (chrome.runtime.lastError) reject(new Error(chrome.runtime.lastError.message));
+          else resolve();
+        });
+      });
+    }), apiKey);
+    console.log(`[CapSolver] Đã ghi key vào storage của extension ${extensionId}`);
+  } finally {
+    await page.close().catch(() => {});
+  }
+}
+
+async function clearCapSolverProfileStorage(profilePath) {
+  const storagePath = path.join(profilePath, 'Default', 'Local Extension Settings');
   await fs.rm(storagePath, { recursive: true, force: true });
   console.log(`[CapSolver] Đã xóa storage local của profile: ${storagePath}`);
 }

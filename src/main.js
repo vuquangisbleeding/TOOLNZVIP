@@ -27,13 +27,13 @@ function buildApiKeyAudit(apiKey, accounts) {
   ].join('\n');
 }
 
-async function runAccount(baseApplicant, account, index, args) {
+async function runAccount(baseApplicant, account, index, args, apiKey) {
   const accountStartedAt = Date.now();
   let browser;
   try {
     await initializeAccountLogger(index, account.username);
     console.log(`[account ${index + 1}: ${account.username}] BROWSER_LAUNCH_START`);
-    browser = await launchBrowserWithTimeout(args, index, account.username, account.proxy);
+    browser = await launchBrowserWithTimeout(args, index, account.username, account.proxy, apiKey);
     console.log(`[account ${index + 1}: ${account.username}] BROWSER_LAUNCH_READY`);
     await configureProxyAuthentication(browser, account.proxy);
     const result = await runApplicant(browser, baseApplicant, account, index);
@@ -53,9 +53,9 @@ async function runAccount(baseApplicant, account, index, args) {
   }
 }
 
-async function launchBrowserWithTimeout(args, index, username, proxy) {
+async function launchBrowserWithTimeout(args, index, username, proxy, apiKey) {
   let timedOut = false;
-  const launch = launchBrowser(args, index, proxy).then(browser => {
+  const launch = launchBrowser(args, index, proxy, apiKey).then(browser => {
     if (timedOut) browser.close().catch(() => {});
     return browser;
   });
@@ -78,7 +78,7 @@ async function main() {
     args.push(`--disable-extensions-except=${resolved}`, `--load-extension=${resolved}`);
   }
   console.log(`Chuẩn bị chạy ${accounts.length} Chrome profile độc lập.`);
-  const startedAt = Date.now(); await Promise.all(accounts.map((account, index) => runAccount(baseApplicant, account, index, args)));
+  const startedAt = Date.now(); await Promise.all(accounts.map((account, index) => runAccount(baseApplicant, account, index, args, apiKey)));
   if (apiKey) {
     const auditFile = path.join(config.logRoot, `capsolver-keys-${new Date().toISOString().replace(/[:.]/g, '-')}.log`);
     await fs.writeFile(auditFile, buildApiKeyAudit(apiKey, accounts), { mode: 0o600 });
