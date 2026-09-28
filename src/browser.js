@@ -25,12 +25,19 @@ function maskApiKey(apiKey) {
 async function launchBrowser(args, index, proxy) {
   const profilePath = path.join(config.profileRoot, `account-${index + 1}`);
   await fs.mkdir(profilePath, { recursive: true });
+  if (config.capsolverExtensionPath) await clearCapSolverProfileStorage(profilePath, config.capsolverExtensionId);
   const normalizedProxy = normalizeProxy(proxy);
   const launchArgs = [...args];
   if (normalizedProxy) launchArgs.push(`--proxy-server=${normalizedProxy.server}`);
   console.log(`[account ${index + 1}] Chrome profile: ${profilePath}`);
   if (normalizedProxy) console.log(`[account ${index + 1}] Proxy: ${normalizedProxy.server}`);
   return puppeteer.launch({ headless: config.headless, executablePath: config.chromeExecutablePath, userDataDir: profilePath, args: launchArgs, defaultViewport: null });
+}
+
+async function clearCapSolverProfileStorage(profilePath, extensionId) {
+  const storagePath = path.join(profilePath, 'Default', 'Local Extension Settings', extensionId);
+  await fs.rm(storagePath, { recursive: true, force: true });
+  console.log(`[CapSolver] Đã xóa storage local của profile: ${storagePath}`);
 }
 
 async function authenticateProxy(page, proxy) {
@@ -51,20 +58,6 @@ async function configureProxyAuthentication(browser, proxy) {
   });
 }
 
-async function clearCapSolverStoredConfig(browser, extensionId) {
-  const extensionPrefix = `chrome-extension://${extensionId}`;
-  let extensionTarget = browser.targets().find(target => target.url().startsWith(extensionPrefix));
-  if (!extensionTarget) {
-    extensionTarget = await browser.waitForTarget(target => target.url().startsWith(extensionPrefix), { timeout: 15000 });
-  }
-  const worker = await extensionTarget.worker();
-  if (!worker) throw new Error('CapSolver service worker chưa sẵn sàng');
-  await worker.evaluate(async () => {
-    await chrome.storage.local.remove('defaultConfig');
-  });
-  console.log('CapSolver stored defaultConfig đã được xóa; extension sẽ đọc apiKey từ assets/config.js');
-}
-
 async function getSinglePage(browser) {
   const pages = await browser.pages();
   const page = pages[0] || await browser.newPage();
@@ -72,4 +65,4 @@ async function getSinglePage(browser) {
   return page;
 }
 
-module.exports = { launchBrowser, authenticateProxy, configureProxyAuthentication, clearCapSolverStoredConfig, getSinglePage, normalizeProxy, maskApiKey };
+module.exports = { launchBrowser, authenticateProxy, configureProxyAuthentication, getSinglePage, normalizeProxy, maskApiKey };
