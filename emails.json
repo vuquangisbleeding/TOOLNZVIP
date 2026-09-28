@@ -2,31 +2,151 @@
   {
     "username": "vuquang02122000",
     "password": "Vuquang02122000@",
-    "email": "quangnv1.ftuforum@gmail.com"
+    "email": "quangnv1.ftuforum@gmail.com",
+    "proxy": {
+      "server": "http://172.204.27.33:8001",
+      "username": "nzproxy",
+      "password": "NzProxy_2026_Test"
+    }
   },
   {
     "username": "vuquang02122001",
     "password": "Vuquang02122000@",
-    "email": "quangnv.ftuforum@gmail.com"
+    "email": "quangnv.ftuforum@gmail.com",
+    "proxy": {
+      "server": "http://172.204.26.182:8002",
+      "username": "nzproxy",
+      "password": "NzProxy_2026_Test"
+    }
   },
   {
     "username": "vuquang02122002",
     "password": "Vuquang02122000@",
-    "email": "quangnv.ftuforum@gmail.com"
+    "email": "quangnv.ftuforum@gmail.com",
+    "proxy": {
+      "server": "http://172.204.25.90:8003",
+      "username": "nzproxy",
+      "password": "NzProxy_2026_Test"
+    }
   },
   {
     "username": "vuquang02122003",
     "password": "Vuquang02122000@",
-    "email": "quangnv.ftuforum@gmail.com"
+    "email": "quangnv.ftuforum@gmail.com",
+    "proxy": {
+      "server": "http://172.204.27.203:8004",
+      "username": "nzproxy",
+      "password": "NzProxy_2026_Test"
+    }
   },
   {
     "username": "vuquang02122004",
     "password": "Vuquang02122000@",
-    "email": "quangnv.ftuforum@gmail.com"
+    "email": "quangnv.ftuforum@gmail.com",
+    "proxy": {
+      "server": "http://172.196.32.30:8005",
+      "username": "nzproxy",
+      "password": "NzProxy_2026_Test"
+    }
+  },
+  {
+    "username": "vuquang02122005",
+    "password": "Vuquang02122000@",
+    "email": "quangnv.ftuforum@gmail.com",
+    "proxy": {
+      "server": "http://172.196.51.5:8006",
+      "username": "nzproxy",
+      "password": "NzProxy_2026_Test"
+    }
   },
   {
     "username": "vuquang02122006",
     "password": "Vuquang02122000@",
-    "email": "quangnv.ftuforum@gmail.com"
+    "email": "quangnv1.ftuforum@gmail.com",
+    "proxy": {
+      "server": "http://172.204.28.26:8007",
+      "username": "nzproxy",
+      "password": "NzProxy_2026_Test"
+    }
+  },
+  {
+    "username": "vuquang02122007",
+    "password": "Vuquang02122000@",
+    "email": "quangnv.ftuforum@gmail.com",
+    "proxy": {
+      "server": "http://172.196.51.57:8008",
+      "username": "nzproxy",
+      "password": "NzProxy_2026_Test"
+    }
+  },
+  {
+    "username": "vuquang02122008",
+    "password": "Vuquang02122000@",
+    "email": "quangnv.ftuforum@gmail.com",
+    "proxy": {
+      "server": "http://172.196.51.78:8009",
+      "username": "nzproxy",
+      "password": "NzProxy_2026_Test"
+    }
+  },
+  {
+    "username": "vuquang02122009",
+    "password": "Vuquang02122000@",
+    "email": "quangnv.ftuforum@gmail.com",
+    "proxy": {
+      "server": "http://172.196.33.128:8010",
+      "username": "nzproxy",
+      "password": "NzProxy_2026_Test"
+    }
+  },
+  {
+    "username": "vuquang021220010",
+    "password": "Vuquang02122000@",
+    "email": "quangnv.ftuforum@gmail.com",
+    "proxy": {
+      "server": "http://172.196.33.166:8011",
+      "username": "nzproxy",
+      "password": "NzProxy_2026_Test"
+    }
+  },
+  {
+    "username": "vuquang02122011",
+    "password": "Vuquang02122000@",
+    "email": "quangnv.ftuforum@gmail.com",
+    "proxy": {
+      "server": "http://172.196.51.164:8012",
+      "username": "nzproxy",
+      "password": "NzProxy_2026_Test"
+    }
+  },
+  {
+    "username": "vuquang02122012",
+    "password": "Vuquang02122000@",
+    "email": "quangnv.ftuforum@gmail.com",
+    "proxy": {
+      "server": "http://172.196.51.188:8013",
+      "username": "nzproxy",
+      "password": "NzProxy_2026_Test"
+    }
+  },
+  {
+    "username": "vuquang02122013",
+    "password": "Vuquang02122000@",
+    "email": "quangnv.ftuforum@gmail.com",
+    "proxy": {
+      "server": "http://172.196.51.242:8014",
+      "username": "nzproxy",
+      "password": "NzProxy_2026_Test"
+    }
+  },
+  {
+    "username": "vuquang02122014",
+    "password": "Vuquang02122000@",
+    "email": "quangnv.ftuforum@gmail.com",
+    "proxy": {
+      "server": "http://172.196.52.42:8015",
+      "username": "nzproxy",
+      "password": "NzProxy_2026_Test"
+    }
   }
 ]

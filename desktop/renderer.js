@@ -62,6 +62,10 @@ function writePath(object, path, value) {
   target[lastKey] = value;
 }
 
+function proxyFormValue(proxy) {
+  return typeof proxy === 'object' && proxy !== null ? proxy.server || '' : proxy || '';
+}
+
 function renderForm(applicant, accounts) {
   formEditor.querySelectorAll('[data-path]').forEach(input => {
     input.value = readPath(applicant, input.dataset.path);
@@ -77,7 +81,13 @@ function renderForm(applicant, accounts) {
       const input = document.createElement('input');
       input.dataset.accountField = key;
       input.type = key === 'password' ? 'password' : key === 'email' ? 'email' : 'text';
-      input.value = account[key] || '';
+      input.value = key === 'proxy' ? proxyFormValue(account[key]) : account[key] || '';
+      if (key === 'proxy' && account[key] && typeof account[key] === 'object') {
+        input.dataset.proxyCredentials = JSON.stringify({
+          username: account[key].username || '',
+          password: account[key].password || ''
+        });
+      }
       field.appendChild(input);
       row.appendChild(field);
     });
@@ -97,7 +107,12 @@ function syncFormToJson() {
   const accounts = [...accountsFormRows.querySelectorAll('.account-form-row')].map(row => {
     const account = {};
     row.querySelectorAll('[data-account-field]').forEach(input => {
-      if (input.value.trim() !== '') account[input.dataset.accountField] = input.value.trim();
+      const value = input.value.trim();
+      if (value === '') return;
+      if (input.dataset.accountField === 'proxy' && input.dataset.proxyCredentials) {
+        const credentials = JSON.parse(input.dataset.proxyCredentials);
+        account.proxy = { server: value, ...credentials };
+      } else account[input.dataset.accountField] = value;
     });
     return account;
   });
